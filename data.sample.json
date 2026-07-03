@@ -1,0 +1,23 @@
+{
+  "updatedAt": "2026-07-03T09:30:00Z",
+  "lines": [
+    {
+      "id": "line1",
+      "label": "Ligne 1",
+      "plan": "Yoxo 100 Go",
+      "data":  { "remaining": 63.4, "total": 100, "unit": "Go" },
+      "voice": { "unlimited": true, "unit": "min" },
+      "sms":   { "unlimited": true, "unit": "SMS" },
+      "validUntil": "2026-07-21"
+    },
+    {
+      "id": "line2",
+      "label": "Ligne 2",
+      "plan": "Yoxo 30 Go",
+      "data":  { "remaining": 8.2, "total": 30, "unit": "Go" },
+      "voice": { "remaining": 145, "total": 300, "unit": "min" },
+      "sms":   { "remaining": 200, "total": 200, "unit": "SMS" },
+      "validUntil": "2026-07-11"
+    }
+  ]
+}

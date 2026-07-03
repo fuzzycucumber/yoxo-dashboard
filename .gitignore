@@ -1,0 +1,6 @@
+# A real data.json may contain your line numbers / usage — never commit it.
+data.json
+# Local junk
+.DS_Store
+__pycache__/
+*.pyc
