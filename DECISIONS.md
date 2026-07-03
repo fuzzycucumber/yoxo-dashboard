@@ -28,3 +28,8 @@ Append-only. Newest entries added at the bottom. Format: `D-NNNN`.
 ## D-0004 — Password gate is client-side SHA-256, documented as light
 **Decision:** Gate on a SHA-256 hash compared in-browser; no plaintext, no credentials stored.
 **Reflection:** Real auth needs a backend (not free/simple). Data here is low-sensitivity usage numbers, so a light lock is an acceptable, honestly-documented tradeoff.
+
+## D-0005 — Public repo on GitHub Pages, phone numbers scrubbed from source
+**Context:** User chose GitHub Pages for a free permanent URL. Free Pages serves only from a **public** repo, and a client-side page cannot hide its own source from anyone who opens the URL.
+**Decision:** Create `fuzzycucumber/yoxo-dashboard` as **public**, but **do not commit the real line numbers**. `CONFIG.LINES` ships with empty ids; a new editor "Numéro" field lets the user store numbers in `localStorage` on-device; `data.json` is gitignored. Deploy uses the REST Git Data API (git CLI is blocked by the sandbox proxy); the initial commit is bootstrapped via the Contents API to work around GitHub's empty-repo blob 409.
+**Reflection / tradeoffs surfaced:** Keeps the two mobile numbers off the public internet by default. Cost: numbers are per-device (localStorage), and true auto-refresh via a committed `data.json` would expose numbers+usage publicly. If the user wants auto-refresh AND privacy, the path is Cloudflare Pages with a private source repo (or a paid GitHub plan for private Pages) — flagged for operator choice.
