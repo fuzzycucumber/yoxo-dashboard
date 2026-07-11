@@ -2,6 +2,11 @@
 
 Chronological changelog, newest at top.
 
+## 2026-07-11
+- Added `yoxo-userscript.user.js` (Tampermonkey): reads Go/minutes/reset-date from the logged-in Yoxo page and PUTs `data.json` via the GitHub API (GM_xmlhttpRequest). Handles both lines by number→slot mapping; numbers never written to data.json.
+- Dashboard redesign to match real Yoxo data: two rings per line (blue Internet in Go, green Appels as Xh Ymin), graceful "remaining-only" (full ring when no total), per-line "relevé" timestamp, reset-date countdown. Added cache-buster to data.json fetch.
+- Rewrote FETCHER.md for the Firefox + Tampermonkey method; added userscript test (guards against committing a real token). Recorded D-0006.
+
 ## 2026-07-03
 - Deployed to GitHub Pages: `fuzzycucumber/yoxo-dashboard` (public) → https://fuzzycucumber.github.io/yoxo-dashboard/ . Pushed via REST Git Data API (git CLI blocked in sandbox); bootstrapped initial commit via Contents API (empty-repo 409 workaround).
 - Privacy: removed hard-coded line numbers from the committed build (public repo). Numbers are now entered on-device via a new editor "Numéro" field (localStorage only); `data.json` is gitignored. Added `.nojekyll`.

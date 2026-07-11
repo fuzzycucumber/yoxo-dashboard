@@ -133,6 +133,14 @@
     font-weight:600;opacity:0;transition:.25s;z-index:60;box-shadow:var(--shadow);pointer-events:none;max-width:90vw}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .foot-note{text-align:center;color:var(--mut2);font-size:.72rem;margin-top:18px;line-height:1.6}
+  /* two-ring line layout */
+  .rings{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;padding:10px 0 2px}
+  .rg{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .ring.sm{width:104px;height:104px}
+  .ring.sm .val{font-size:1.34rem}
+  .val .u{font-size:.7rem;color:var(--mut);font-weight:700;margin-left:1px}
+  .rglab{display:flex;align-items:center;gap:6px;color:var(--mut);font-size:.85rem;font-weight:700}
+  .dim{color:var(--mut2)}
 </style>
 </head>
 <body>
@@ -224,16 +232,16 @@ const CONFIG = {
 const DEMO = {
   updatedAt: new Date(Date.now() - 6 * 3600e3).toISOString(),
   lines: [
-    { id:"", label:"Ligne 1", plan:"Yoxo 100 Go",
-      data:{remaining:63.4,total:100,unit:"Go"},
-      voice:{unlimited:true,unit:"min"},
-      sms:{unlimited:true,unit:"SMS"},
-      validUntil:"2026-07-21" },
-    { id:"", label:"Ligne 2", plan:"Yoxo 30 Go",
-      data:{remaining:8.2,total:30,unit:"Go"},
-      voice:{remaining:145,total:300,unit:"min"},
-      sms:{remaining:200,total:200,unit:"SMS"},
-      validUntil:"2026-07-11" }
+    { id:"", label:"Ligne 1",
+      data:{remaining:42.2,unit:"Go"},
+      voice:{remaining:300,unit:"min"},
+      validUntil:"2026-08-01",
+      asOf: new Date(Date.now() - 6 * 3600e3).toISOString() },
+    { id:"", label:"Ligne 2",
+      data:{remaining:8.2,unit:"Go"},
+      voice:{remaining:145,unit:"min"},
+      validUntil:"2026-07-15",
+      asOf: new Date(Date.now() - 26 * 3600e3).toISOString() }
   ]
 };
 
@@ -284,7 +292,8 @@ function save(state){
 async function fromRemote(url){
   const u = url || localStorage.getItem(LSURL) || CONFIG.DATA_URL;
   if(!u) return null;
-  const res = await fetch(u, {cache:"no-store"});
+  const bust = u + (u.includes("?") ? "&" : "?") + "t=" + Date.now();
+  const res = await fetch(bust, {cache:"no-store"});
   if(!res.ok) throw new Error("HTTP "+res.status);
   return normalize(await res.json());
 }
@@ -302,7 +311,8 @@ function normalize(raw){
       data: bucket(src.data),
       voice: bucket(src.voice),
       sms: bucket(src.sms),
-      validUntil: src.validUntil || ""
+      validUntil: src.validUntil || "",
+      asOf: src.asOf || null
     };
   });
   return { updatedAt: raw.updatedAt || new Date().toISOString(), lines };
@@ -341,50 +351,64 @@ function validTxt(iso){
   return {ds, days};
 }
 
+function initials(s){ return (s||"L").trim().slice(0,2).toUpperCase(); }
+function fmtVoice(min, unit){
+  if(min===null||min===undefined) return "—";
+  if(unit && unit!=="min") return `${fmt(min)}<span class="u">${esc(unit)}</span>`;
+  const h=Math.floor(min/60), m=Math.round(min%60);
+  if(h>0) return `${h}<span class="u">h</span>${String(m).padStart(2,"0")}`;
+  return `${m}<span class="u">min</span>`;
+}
+function ringHtml(label, b, kind){
+  const color = kind==="data" ? "var(--blue)" : "var(--ok)";
+  const C = 2*Math.PI*46; // r=46
+  let fill=1, center="—", sub="restant";
+  if(!b){ fill=0; center=`<span style="font-size:1rem;color:var(--mut)">—</span>`; sub="non renseigné"; }
+  else if(b.unlimited){ fill=1; center=`<span class="inf">∞</span>`; sub=label.toLowerCase(); }
+  else {
+    const rem=b.remaining;
+    fill=(b.total>0)?Math.max(0,Math.min(1, rem/b.total)):1;
+    center=(kind==="data")
+      ? `${fmt(rem)}<span class="u">${esc(b.unit||"Go")}</span>`
+      : fmtVoice(rem, b.unit);
+  }
+  const off=C*(1-fill);
+  return `
+    <div class="rg">
+      <div class="ring sm">
+        <svg width="104" height="104" viewBox="0 0 104 104">
+          <circle cx="52" cy="52" r="46" fill="none" stroke="#0f1218" stroke-width="9"/>
+          <circle cx="52" cy="52" r="46" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
+        </svg>
+        <div class="lab"><div class="val">${center}</div><div class="cap">${sub}</div></div>
+      </div>
+      <div class="rglab">${iconFor(kind)} ${label}</div>
+    </div>`;
+}
 function lineCard(l, idx){
-  const dataP = l.data && !l.data.unlimited ? pct(l.data.remaining, l.data.total) : 1;
-  const C = 2*Math.PI*52; // circumference for r=52
-  const off = C*(1-dataP);
-  const rc = l.data && l.data.unlimited ? "var(--ok)" : ringColor(dataP);
-  const initials = (l.label||"L").trim().slice(0,2).toUpperCase();
   const v = validTxt(l.validUntil);
-
-  const ringInner = l.data ? (l.data.unlimited
-      ? `<div class="val inf">∞</div><div class="unit">${l.data.unit||""}</div>`
-      : `<div class="val">${fmt(l.data.remaining)}</div><div class="unit">${l.data.unit||"Go"} restants</div>
-         <div class="cap">/ ${fmt(l.data.total)} ${l.data.unit||"Go"}</div>`)
-    : `<div class="val" style="font-size:1rem;color:var(--mut)">—</div><div class="cap">non renseigné</div>`;
-
+  const showNum = l.id && !/^line\d+$/.test(l.id);
   return `
   <div class="card" data-idx="${idx}">
     <div class="top">
       <div class="who">
-        <div class="avatar ${idx===1?'b':''}">${initials}</div>
+        <div class="avatar ${idx===1?'b':''}">${initials(l.label)}</div>
         <div class="meta">
           <div class="name">${esc(l.label)}</div>
-          ${l.id ? `<div class="num">${esc(l.id)}</div>` : ``}
+          ${showNum ? `<div class="num">${esc(l.id)}</div>` : ``}
         </div>
       </div>
       ${l.plan ? `<div class="plan">${esc(l.plan)}</div>` : ``}
     </div>
 
-    <div class="hero">
-      <div class="ring">
-        <svg width="118" height="118" viewBox="0 0 118 118">
-          <circle cx="59" cy="59" r="52" fill="none" stroke="#0f1218" stroke-width="11"/>
-          <circle cx="59" cy="59" r="52" fill="none" stroke="${rc}" stroke-width="11" stroke-linecap="round"
-            stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"/>
-        </svg>
-        <div class="lab">${ringInner}</div>
-      </div>
-      <div class="stats">
-        ${statRow("Appels", l.voice, "voice")}
-        ${statRow("SMS", l.sms, "sms")}
-      </div>
+    <div class="rings">
+      ${ringHtml("Appels", l.voice, "voice")}
+      ${ringHtml("Internet", l.data, "data")}
     </div>
 
     <div class="foot">
-      <div class="valid">${ v ? `Valable jusqu'au <b>${v.ds}</b>${v.days>=0?` · ${v.days} j`:` · expiré`}` : `Validité non renseignée`}</div>
+      <div class="valid">${ v ? `Réinit. le <b>${v.ds}</b>${v.days>=0?` · J-${v.days}`:` · expiré`}` : `Validité —`}${ l.asOf ? ` · <span class="dim">relevé ${relTime(l.asOf)}</span>` : `` }</div>
       <button class="linkbtn" data-edit="${idx}">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
         Modifier
@@ -393,29 +417,9 @@ function lineCard(l, idx){
     <div class="editor hidden" id="ed${idx}"></div>
   </div>`;
 }
-
-function statRow(label, b, cls){
-  if(!b) return `
-    <div class="stat">
-      <div class="srow"><span class="slab">${iconFor(cls)} ${label}</span><span class="sval" style="color:var(--mut)">—</span></div>
-      <div class="bar ${cls}"><i style="width:0%"></i></div>
-    </div>`;
-  if(b.unlimited) return `
-    <div class="stat">
-      <div class="srow"><span class="slab">${iconFor(cls)} ${label}</span><span class="sval inf">Illimité</span></div>
-      <div class="bar ${cls}"><i style="width:100%"></i></div>
-    </div>`;
-  const p = Math.round(pct(b.remaining,b.total)*100);
-  return `
-    <div class="stat">
-      <div class="srow"><span class="slab">${iconFor(cls)} ${label}</span>
-        <span class="sval">${fmt(b.remaining)}<span style="color:var(--mut2);font-weight:600"> / ${fmt(b.total)} ${b.unit||""}</span></span></div>
-      <div class="bar ${cls}"><i style="width:${p}%"></i></div>
-    </div>`;
-}
-function iconFor(cls){
-  if(cls==="voice") return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>`;
-  if(cls==="sms") return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+function iconFor(kind){
+  if(kind==="voice") return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"/></svg>`;
+  if(kind==="data") return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.86a10 10 0 0 1 14 0"/><path d="M8.5 16.43a5 5 0 0 1 7 0"/></svg>`;
   return "";
 }
 function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }

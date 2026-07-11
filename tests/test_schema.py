@@ -64,9 +64,25 @@ def test_index_html():
     check("TODO" not in html and "FIXME" not in html, "no TODO/FIXME markers")
 
 
+def test_userscript():
+    print("yoxo-userscript.user.js")
+    import re
+    p = ROOT / "yoxo-userscript.user.js"
+    check(p.exists(), "userscript present")
+    if not p.exists():
+        return
+    js = p.read_text(encoding="utf-8")
+    check("PASTE_YOUR_GITHUB_PAT_HERE" in js, "ships a token placeholder (not a real token)")
+    check("api.github.com" in js and "@connect" in js, "declares GitHub API connect grant")
+    check("espace-client.yoxo.ma" in js, "matches the Yoxo domain")
+    # never commit a real fine-grained token
+    check(not re.search(r"github_pat_[A-Za-z0-9_]{20,}", js), "no real github_pat_ token committed")
+
+
 if __name__ == "__main__":
     test_data_sample()
     test_index_html()
+    test_userscript()
     print()
     if FAILS:
         print(f"{len(FAILS)} check(s) failed")
