@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-11T13:42:00+01:00",
+  "updatedAt": "2026-07-11T13:44:00+01:00",
   "lines": [
     {
       "id": "line1",
@@ -18,10 +18,16 @@
     {
       "id": "line2",
       "label": "Ligne 2",
-      "data": null,
-      "voice": null,
-      "validUntil": "",
-      "asOf": null
+      "data": {
+        "remaining": 41.2,
+        "unit": "Go"
+      },
+      "voice": {
+        "remaining": 237,
+        "unit": "min"
+      },
+      "validUntil": "2026-08-01",
+      "asOf": "2026-07-11T13:44:00+01:00"
     }
   ]
 }
